@@ -13,6 +13,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import OnboardingScreen from '@/screens/OnboardingScreen';
 import DailyPlanScreen from '@/screens/DailyPlanScreen';
 import TodoScreen from '@/screens/TodoScreen';
+import ProfileScreen from '@/screens/ProfileScreen';
 import { colors } from '@/theme/colors';
 
 // TypeScript types for navigation
@@ -130,9 +131,6 @@ const theme = {
   },
   fonts: fontConfig,
 };
-
-// Import the Profile screen
-import ProfileScreen from '@/screens/ProfileScreen';
 
 function MainTabs() {
   const theme = useTheme();

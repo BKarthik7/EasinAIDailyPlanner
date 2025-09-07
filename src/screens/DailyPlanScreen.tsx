@@ -52,7 +52,7 @@ const DailyPlanScreen = ({ styles }: DailyPlanScreenProps) => {
   const [newTask, setNewTask] = useState<Omit<Task, 'id'>>({ 
     title: '', 
     description: '', 
-    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), // 24hr format
     completed: false, 
     priority: 'medium' 
   });
@@ -67,17 +67,15 @@ const DailyPlanScreen = ({ styles }: DailyPlanScreenProps) => {
 
   const handleAddTask = () => {
     if (!newTask.title.trim()) return;
-    
     const taskToAdd = {
       ...newTask,
       id: Date.now().toString(),
     };
-    
     setTasks([...tasks, taskToAdd].sort((a, b) => a.time.localeCompare(b.time)));
     setNewTask({ 
       title: '', 
       description: '', 
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), // 24hr format
       completed: false, 
       priority: 'medium' 
     });
@@ -87,7 +85,7 @@ const DailyPlanScreen = ({ styles }: DailyPlanScreenProps) => {
   const onTimeChange = (event: any, selectedTime?: Date) => {
     setShowTimePicker(false);
     if (selectedTime) {
-      const timeString = selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const timeString = selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }); // 24hr format
       setNewTask({ ...newTask, time: timeString });
     }
   };
@@ -153,6 +151,11 @@ const DailyPlanScreen = ({ styles }: DailyPlanScreenProps) => {
         : theme.colors.onSurfaceVariant;
   };
 
+  // Delete task handler
+  const handleDeleteTask = (taskId: string) => {
+    setTasks(tasks.filter(task => task.id !== taskId));
+  };
+
   const renderTask = ({ item }: { item: Task }) => (
     <Card 
       style={[styles.taskCard, { 
@@ -163,28 +166,30 @@ const DailyPlanScreen = ({ styles }: DailyPlanScreenProps) => {
         elevation: 2,
       }]}
     >
-      <TouchableOpacity 
-        onPress={() => toggleTaskCompletion(item.id)}
-        style={styles.taskContent}
-      >
-        <View style={{
-          width: 24,
-          height: 24,
-          borderRadius: 12,
-          borderWidth: 2,
-          borderColor: item.completed ? theme.colors.primary : theme.colors.outlineVariant,
-          justifyContent: 'center',
-          alignItems: 'center',
-          marginRight: 12,
-        }}>
-          {item.completed && (
-            <MaterialCommunityIcons 
-              name="check" 
-              size={18} 
-              color={theme.colors.primary} 
-            />
-          )}
-        </View>
+      <View style={styles.taskContent}>
+        <TouchableOpacity 
+          onPress={() => toggleTaskCompletion(item.id)}
+          style={{ justifyContent: 'center', alignItems: 'center' }}
+        >
+          <View style={{
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            borderWidth: 2,
+            borderColor: item.completed ? theme.colors.primary : theme.colors.outlineVariant,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 12,
+          }}>
+            {item.completed && (
+              <MaterialCommunityIcons 
+                name="check" 
+                size={18} 
+                color={theme.colors.primary} 
+              />
+            )}
+          </View>
+        </TouchableOpacity>
         
         <View style={{ flex: 1 }}>
           <Text 
@@ -247,7 +252,7 @@ const DailyPlanScreen = ({ styles }: DailyPlanScreenProps) => {
         </View>
         
         <TouchableOpacity 
-          onPress={() => console.log('Delete task pressed')}
+          onPress={() => handleDeleteTask(item.id)}
           style={{
             padding: 8,
             borderRadius: 20,
@@ -260,7 +265,7 @@ const DailyPlanScreen = ({ styles }: DailyPlanScreenProps) => {
             color={theme.colors.error} 
           />
         </TouchableOpacity>
-      </TouchableOpacity>
+      </View>
     </Card>
   );
 
@@ -368,7 +373,16 @@ const DailyPlanScreen = ({ styles }: DailyPlanScreenProps) => {
       )}
 
       <FAB
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+        style={[
+          styles.fab,
+          {
+            backgroundColor: theme.colors.primary,
+            position: 'absolute',
+            right: 16,
+            bottom: 80, // Move up above bottom tab bar
+            zIndex: 10,
+          }
+        ]}
         icon="plus"
         onPress={() => setShowAddModal(true)}
         color="white"
@@ -379,78 +393,112 @@ const DailyPlanScreen = ({ styles }: DailyPlanScreenProps) => {
         <Modal 
           visible={showAddModal} 
           onDismiss={() => setShowAddModal(false)}
-          contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}
+          contentContainerStyle={[
+            styles.modalContainer, 
+            { backgroundColor: theme.colors.surface, minHeight: 300, justifyContent: 'center' }
+          ]}
         >
-          <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
-            Add New Task
-          </Text>
-          
-          <TextInput
-            label="Task Title"
-            value={newTask.title}
-            onChangeText={(text) => setNewTask({...newTask, title: text})}
-            mode="outlined"
-            style={styles.input}
-            theme={{
-              colors: {
-                primary: theme.colors.primary,
-                text: theme.colors.onSurface,
-                placeholder: theme.colors.onSurfaceVariant,
-              },
-            }}
-          />
-          
-          <View style={styles.priorityButtons}>
-            {(['low', 'medium', 'high'] as const).map((priority) => (
+          <ScrollView>
+            <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
+              Add New Task
+            </Text>
+            
+            <TextInput
+              label="Task Title"
+              value={newTask.title}
+              onChangeText={(text) => setNewTask({...newTask, title: text})}
+              mode="outlined"
+              style={styles.input}
+              theme={{
+                colors: {
+                  primary: theme.colors.primary,
+                  text: theme.colors.onSurface,
+                  placeholder: theme.colors.onSurfaceVariant,
+                },
+              }}
+            />
+
+            <TextInput
+              label="Description"
+              value={newTask.description}
+              onChangeText={(text) => setNewTask({...newTask, description: text})}
+              mode="outlined"
+              style={[styles.input, styles.textArea]}
+              multiline
+              numberOfLines={3}
+              theme={{
+                colors: {
+                  primary: theme.colors.primary,
+                  text: theme.colors.onSurface,
+                  placeholder: theme.colors.onSurfaceVariant,
+                },
+              }}
+            />
+
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 4 }}>
+                Time
+              </Text>
               <TouchableOpacity
-                key={priority}
-                style={[
-                  styles.priorityButton,
-                  { 
-                    borderColor: theme.colors.outlineVariant,
-                    ...(newTask.priority === priority && { 
-                      backgroundColor: `${getPriorityColor(priority)}20`,
-                      borderColor: getPriorityColor(priority),
-                    }),
-                  },
-                ]}
-                onPress={() => setNewTask({...newTask, priority})}
+                style={styles.timeButton}
+                onPress={() => setShowTimePicker(true)}
               >
-                <Text 
+                <Text style={styles.timeButtonText}>{newTask.time}</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.priorityButtons}>
+              {(['low', 'medium', 'high'] as const).map((priority) => (
+                <TouchableOpacity
+                  key={priority}
                   style={[
-                    styles.priorityButtonText,
+                    styles.priorityButton,
                     { 
-                      color: newTask.priority === priority 
-                        ? getPriorityColor(priority) 
-                        : theme.colors.onSurfaceVariant,
+                      borderColor: theme.colors.outlineVariant,
+                      ...(newTask.priority === priority && { 
+                        backgroundColor: `${getPriorityColor(priority)}20`,
+                        borderColor: getPriorityColor(priority),
+                      }),
                     },
                   ]}
+                  onPress={() => setNewTask({...newTask, priority})}
                 >
-                  {priority.charAt(0).toUpperCase() + priority.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          
-          <View style={styles.modalButtons}>
-            <Button 
-              mode="outlined" 
-              onPress={() => setShowAddModal(false)}
-              style={[styles.modalButton, styles.cancelButton]}
-              labelStyle={styles.cancelButtonText}
-            >
-              Cancel
-            </Button>
-            <Button 
-              mode="contained" 
-              onPress={handleAddTask}
-              style={[styles.modalButton, { backgroundColor: theme.colors.primary }]}
-              labelStyle={styles.addButtonText}
-              disabled={!newTask.title.trim()}
-            >
-              Add Task
-            </Button>
-          </View>
+                  <Text 
+                    style={[
+                      styles.priorityButtonText,
+                      { 
+                        color: newTask.priority === priority 
+                          ? getPriorityColor(priority) 
+                          : theme.colors.onSurfaceVariant,
+                      },
+                    ]}
+                  >
+                    {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <View style={styles.modalButtons}>
+              <Button 
+                mode="outlined" 
+                onPress={() => setShowAddModal(false)}
+                style={[styles.modalButton, styles.cancelButton]}
+                labelStyle={styles.cancelButtonText}
+              >
+                Cancel
+              </Button>
+              <Button 
+                mode="contained" 
+                onPress={handleAddTask}
+                style={[styles.modalButton, { backgroundColor: theme.colors.primary }]}
+                labelStyle={styles.addButtonText}
+                disabled={!newTask.title.trim()}
+              >
+                Add Task
+              </Button>
+            </View>
+          </ScrollView>
         </Modal>
       </Portal>
       
@@ -596,8 +644,9 @@ const makeStyles = (theme: MD3Theme) => StyleSheet.create({
     position: 'absolute',
     margin: 16,
     right: 0,
-    bottom: 0,
+    bottom: 80, // Match the value above for consistency
     backgroundColor: theme.colors.primary,
+    borderRadius: 28,
   },
   modalContainer: {
     backgroundColor: theme.colors.surface,

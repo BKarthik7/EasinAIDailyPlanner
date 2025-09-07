@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
 import { Text, Button, FAB, useTheme, Portal, Modal, TextInput, Checkbox } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ type TodoItem = {
   completed: boolean;
   dueDate?: string;
   priority: 'low' | 'medium' | 'high';
+  time?: string;
 };
 
 const initialTodos: TodoItem[] = [
@@ -41,7 +42,8 @@ const TodoScreen = () => {
   const [newTodo, setNewTodo] = useState<Omit<TodoItem, 'id'>>({ 
     title: '', 
     completed: false, 
-    priority: 'medium' 
+    priority: 'medium',
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) // 24hr format
   });
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'completed'>('all');
 
@@ -59,17 +61,16 @@ const TodoScreen = () => {
 
   const addTodo = () => {
     if (!newTodo.title.trim()) return;
-    
     const todoToAdd = {
       ...newTodo,
       id: Date.now().toString(),
     };
-    
     setTodos([...todos, todoToAdd]);
     setNewTodo({ 
       title: '', 
       completed: false, 
-      priority: 'medium' 
+      priority: 'medium',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) // 24hr format
     });
     setShowAddModal(false);
   };
@@ -94,7 +95,7 @@ const TodoScreen = () => {
   const renderTodoItem = ({ item }: { item: TodoItem }) => (
     <View style={[styles.todoItem, { 
       backgroundColor: theme.colors.surface,
-      borderColor: theme.colors.border,
+      borderColor: colors.gray,
     }]}>
       <View style={styles.todoLeft}>
         <Checkbox.Android
@@ -107,7 +108,7 @@ const TodoScreen = () => {
             style={[
               styles.todoTitle, 
               { 
-                color: item.completed ? theme.colors.textDisabled : theme.colors.textPrimary,
+                color: item.completed ? theme.colors.onSurfaceDisabled : theme.colors.onSurface,
                 textDecorationLine: item.completed ? 'line-through' : 'none',
               }
             ]}
@@ -120,10 +121,10 @@ const TodoScreen = () => {
               <MaterialCommunityIcons 
                 name="calendar-clock" 
                 size={14} 
-                color={theme.colors.textSecondary} 
+                color={theme.colors.onSurfaceVariant} 
                 style={styles.dueDateIcon}
               />
-              <Text style={[styles.dueDateText, { color: theme.colors.textSecondary }]}>
+              <Text style={[styles.dueDateText, { color: theme.colors.onSurfaceVariant }]}>
                 {item.dueDate}
               </Text>
             </View>
@@ -151,10 +152,20 @@ const TodoScreen = () => {
     </View>
   );
 
+  const onTimeChange = (event: any, selectedTime?: Date) => {
+    if (selectedTime) {
+      const timeString = selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }); // 24hr format
+      setNewTodo({ ...newTodo, time: timeString });
+    }
+  };
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      pointerEvents="box-none"
+    >
       <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
+        <Text style={[styles.title, { color: theme.colors.onSurface }]}>
           My Tasks
         </Text>
         <View style={styles.tabs}>
@@ -180,7 +191,7 @@ const TodoScreen = () => {
                   { 
                     color: activeTab === tab.id 
                       ? theme.colors.surface 
-                      : theme.colors.textSecondary 
+                      : theme.colors.onSurfaceVariant 
                   },
                 ]}
               >
@@ -204,9 +215,9 @@ const TodoScreen = () => {
           <MaterialCommunityIcons 
             name="clipboard-text-outline" 
             size={64} 
-            color={theme.colors.gray} 
+            color={colors.gray} 
           />
-          <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>
+          <Text style={[styles.emptyStateText, { color: theme.colors.onSurfaceVariant }]}>
             {activeTab === 'all' 
               ? 'No tasks yet. Add your first task!' 
               : activeTab === 'active' 
@@ -226,8 +237,18 @@ const TodoScreen = () => {
         </View>
       )}
 
+      {/* Move FAB outside of ScrollView/FlatList and ensure it's absolutely positioned */}
       <FAB
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+        style={[
+          styles.fab,
+          {
+            backgroundColor: theme.colors.primary,
+            position: 'absolute',
+            right: 16,
+            bottom: 80,
+            zIndex: 10,
+          }
+        ]}
         icon="plus"
         onPress={() => setShowAddModal(true)}
         color="white"
@@ -238,85 +259,90 @@ const TodoScreen = () => {
         <Modal 
           visible={showAddModal} 
           onDismiss={() => setShowAddModal(false)}
-          contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}
+          contentContainerStyle={[
+            styles.modalContainer, 
+            { backgroundColor: theme.colors.surface, minHeight: 300, justifyContent: 'center' }
+          ]}
         >
-          <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>
-            Add New Task
-          </Text>
-          
-          <TextInput
-            label="Task Title"
-            value={newTodo.title}
-            onChangeText={text => setNewTodo({...newTodo, title: text})}
-            mode="outlined"
-            style={styles.input}
-            theme={{
-              colors: {
-                primary: theme.colors.primary,
-                text: theme.colors.textPrimary,
-                placeholder: theme.colors.textDisabled,
-              },
-            }}
-          />
-          
-          <View style={styles.priorityContainer}>
-            <Text style={[styles.priorityLabel, { color: theme.colors.textSecondary }]}>
-              Priority:
+          <ScrollView>
+            <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
+              Add New Task
             </Text>
-            {(['low', 'medium', 'high'] as const).map(priority => (
-              <TouchableOpacity
-                key={priority}
-                style={[
-                  styles.priorityButton,
-                  newTodo.priority === priority && { 
-                    backgroundColor: getPriorityColor(priority) + '20',
-                    borderColor: getPriorityColor(priority),
-                  },
-                  { borderColor: theme.colors.border },
-                ]}
-                onPress={() => setNewTodo({...newTodo, priority})}
-              >
-                <View 
+            
+            <TextInput
+              label="Task Title"
+              value={newTodo.title}
+              onChangeText={text => setNewTodo({...newTodo, title: text})}
+              mode="outlined"
+              style={styles.input}
+              theme={{
+                colors: {
+                  primary: theme.colors.primary,
+                  text: theme.colors.onSurface,
+                  placeholder: theme.colors.onSurfaceDisabled,
+                },
+              }}
+            />
+            
+            <View style={styles.priorityContainer}>
+              <Text style={[styles.priorityLabel, { color: theme.colors.onSurfaceVariant }]}>
+                Priority:
+              </Text>
+              {(['low', 'medium', 'high'] as const).map(priority => (
+                <TouchableOpacity
+                  key={priority}
                   style={[
-                    styles.priorityDot, 
-                    { backgroundColor: getPriorityColor(priority) }
-                  ]} 
-                />
-                <Text 
-                  style={[
-                    styles.priorityText, 
-                    { 
-                      color: newTodo.priority === priority 
-                        ? getPriorityColor(priority) 
-                        : theme.colors.textSecondary
-                    }
+                    styles.priorityButton,
+                    newTodo.priority === priority && { 
+                      backgroundColor: getPriorityColor(priority) + '20',
+                      borderColor: getPriorityColor(priority),
+                    },
+                    { borderColor: colors.gray },
                   ]}
+                  onPress={() => setNewTodo({...newTodo, priority})}
                 >
-                  {priority.charAt(0).toUpperCase() + priority.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          
-          <View style={styles.modalButtons}>
-            <Button 
-              mode="outlined" 
-              onPress={() => setShowAddModal(false)}
-              style={[styles.modalButton, styles.cancelButton]}
-              labelStyle={styles.cancelButtonText}
-            >
-              Cancel
-            </Button>
-            <Button 
-              mode="contained" 
-              onPress={addTodo}
-              style={[styles.modalButton, { backgroundColor: theme.colors.primary }]}
-              labelStyle={styles.addButtonText}
-              disabled={!newTodo.title.trim()}
-            >
-              Add Task
-            </Button>
-          </View>
+                  <View 
+                    style={[
+                      styles.priorityDot, 
+                      { backgroundColor: getPriorityColor(priority) }
+                    ]} 
+                  />
+                  <Text 
+                    style={[
+                      styles.priorityText, 
+                      { 
+                        color: newTodo.priority === priority 
+                          ? getPriorityColor(priority) 
+                          : theme.colors.onSurfaceVariant
+                      }
+                    ]}
+                  >
+                    {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <View style={styles.modalButtons}>
+              <Button 
+                mode="outlined" 
+                onPress={() => setShowAddModal(false)}
+                style={[styles.modalButton, styles.cancelButton]}
+                labelStyle={{ color: theme.colors.onSurfaceVariant }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                mode="contained" 
+                onPress={addTodo}
+                style={[styles.modalButton, { backgroundColor: theme.colors.primary }]}
+                labelStyle={{ color: 'white', fontWeight: '600' }}
+                disabled={!newTodo.title.trim()}
+              >
+                Add Task
+              </Button>
+            </View>
+          </ScrollView>
         </Modal>
       </Portal>
     </SafeAreaView>
@@ -434,13 +460,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     margin: 16,
     right: 0,
-    bottom: 0,
+    bottom: 64, // <-- match the value above for consistency
     borderRadius: 28,
   },
   modalContainer: {
     padding: 24,
     margin: 20,
     borderRadius: 16,
+    minHeight: 300,
+    justifyContent: 'center',
   },
   modalTitle: {
     fontSize: 20,
